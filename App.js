@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, FlatList, StyleSheet } from 'react-native';
-import Task from './Task';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
-import LoginScreen from './screens/LoginScreen';
+import Task from './components/Task';
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
   const [taskTitle, setTaskTitle] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [username, setUsername] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = (user) => {
-    // For simplicity, let's consider login is successful if the username is not empty
-    if (user.trim() !== '') {
-      setUsername(user);
+  const handleLogin = () => {
+    // You can add your login logic here
+    // For simplicity, let's just check if both username and password are non-empty
+    if (username && password) {
       setIsLoggedIn(true);
     }
   };
@@ -29,9 +30,8 @@ const App = () => {
         important: false,
         planned: false,
         assignedToMe: false,
-        user: '', // Set the user for tasks assigned to a specific user
       };
-      setTasks([...tasks, newTask]);
+      setTasks((prevTasks) => [...prevTasks, newTask]);
       setTaskTitle('');
     }
   };
@@ -43,8 +43,43 @@ const App = () => {
     setTasks(updatedTasks);
   };
 
+  const handleEditTask = (taskId) => {
+    setEditingTaskId(taskId);
+  };
+
+  const handleSaveEdit = (taskId, editedTitle) => {
+    const updatedTasks = tasks.map((task) =>
+      task.id === taskId ? { ...task, title: editedTitle } : task
+    );
+    setTasks(updatedTasks);
+    setEditingTaskId(null);
+  };
+
+  const handleDeleteTask = (taskId) => {
+    const updatedTasks = tasks.filter((task) => task.id !== taskId);
+    setTasks(updatedTasks);
+  };
+
+  const handleMoveTask = (taskId, destination) => {
+    const updatedTasks = tasks.map((task) =>
+      task.id === taskId ? { ...task, [destination]: !task[destination] } : task
+    );
+    setTasks(updatedTasks);
+  };
+
   const renderTask = ({ item }) => (
-    <Task task={item} onPress={() => handleToggleComplete(item.id)} />
+    <Task
+      task={item}
+      onPress={() => handleToggleComplete(item.id)}
+      onEdit={() => handleEditTask(item.id)}
+      onSaveEdit={(editedTitle) => handleSaveEdit(item.id, editedTitle)}
+      onDelete={() => handleDeleteTask(item.id)}
+      onMoveMyDay={() => handleMoveTask(item.id, 'myDay')}
+      onMoveImportant={() => handleMoveTask(item.id, 'important')}
+      onMovePlanned={() => handleMoveTask(item.id, 'planned')}
+      onMoveAssigned={() => handleMoveTask(item.id, 'assignedToMe')}
+      isEditing={editingTaskId === item.id}
+    />
   );
 
   const filteredTasks = () => {
@@ -67,8 +102,8 @@ const App = () => {
   return (
     <View style={styles.container}>
       {isLoggedIn ? (
-        <View>
-          <Text style={styles.welcome}>Welcome, {username}!</Text>
+        <>
+          <Text style={styles.title}>Hello, {username}!</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter Task"
@@ -80,7 +115,9 @@ const App = () => {
             style={styles.segmentedControl}
             values={filters}
             selectedIndex={selectedIndex}
-            onChange={(event) => setSelectedIndex(event.nativeEvent.selectedSegmentIndex)}
+            onChange={(event) =>
+              setSelectedIndex(event.nativeEvent.selectedSegmentIndex)
+            }
           />
           <FlatList
             style={styles.flatList}
@@ -88,9 +125,23 @@ const App = () => {
             renderItem={renderTask}
             keyExtractor={(item) => item.id}
           />
-        </View>
+        </>
       ) : (
-        <LoginScreen onLogin={handleLogin} />
+        <>
+          <Text style={styles.title}>Welcome to ToDo App</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            onChangeText={setUsername}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          <Button title="Login" onPress={handleLogin} />
+        </>
       )}
     </View>
   );
@@ -100,15 +151,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    marginTop: 140,
+    marginTop: 50,
   },
   title: {
     fontSize: 24,
     marginBottom: 20,
-  },
-  welcome: {
-    fontSize: 18,
-    marginBottom: 10,
   },
   input: {
     height: 40,
@@ -118,7 +165,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   segmentedControl: {
-    marginTop: 20,
+    marginTop: 10,
   },
   flatList: {
     flex: 1,
